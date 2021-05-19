@@ -1,0 +1,6 @@
+*.conf
+*.pyc
+*.csv
+*.txt
+*.xls
+/.idea
