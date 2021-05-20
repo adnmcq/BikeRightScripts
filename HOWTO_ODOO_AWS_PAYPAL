@@ -1,0 +1,117 @@
+
+
+#Setting Up Odoo on AWS#
+
+Follow this tutorial for setting up EC2 instance and Putty to get access to EC2 shell
+https://sortedodoo.com/step-by-step-guide-to-install-odoo-11-on-aws-ec2/
+
+https://aws.amazon.com/
+
+Sign into the console
+
+Root User
+
+follow above tutorial until
+
+"Install odoo 11 on AWS Server"
+
+There is a shell script that does all of that for us:
+
+
+https://github.com/Yenthe666/InstallScript
+
+Do what above link's README says in the EC2 ubuntu shell
+ but before running,
+
+
+ change INSTALL_NGINX to TRUE
+ change ADMIN_EMAIL to a real email for certbot verification
+ change WEBSITE_NAME to your domain name for certbot verification (I think)
+
+ run install script, does its thing you get a message like:
+
+ * Starting Odoo Service
+Starting odoo-server: odoo-server.
+-----------------------------------------------------------
+Done! The Odoo server is up and running. Specifications:
+Port: 8069
+User service: odoo
+Configuraton file location: /etc/odoo-server.conf
+Logfile location: /var/log/odoo
+User PostgreSQL: odoo
+Code location: odoo
+Addons folder: odoo/odoo-server/addons/
+Password superadmin (database): [see email]
+Start Odoo service: sudo service odoo-server start
+Stop Odoo service: sudo service odoo-server stop
+Restart Odoo service: sudo service odoo-server restart
+Nginx configuration file: /etc/nginx/sites-available/odoo
+-----------------------------------------------------------
+
+
+Ok, so now you can go to AWS console and 'open IP'
+This will open https, but you need just http to get to the initialization screen
+since we still havent made our https fix
+
+at initialization screen enter Password superadmin for master password, the rest can be whatever
+[I emailed them to myself]
+
+=====
+At this point you can use all the modules and stuff BUT
+
+A) we don't all this to be on port 8069
+We want it to be on 80 like normal websites, so you can type in www.ubc.com instead of www.ubc.com:8069
+
+B) AWS defaults to https when you put in IP and we want it to not give us that 'Not secure' thing
+
+--------
+
+A) 8069-->80 port fix is here:
+https://www.digitalocean.com/community/questions/run-odoo-with-nginx-at-port-80
+
+sudo nano /etc/nginx/sites-available/odoo
+
+REPLACE
+
+  location / {
+  proxy_pass    http://127.0.0.1:8069;
+  # by default, do not forward anything
+  proxy_redirect off;
+  }
+
+WITH
+    location / {
+        proxy_pass http://localhost:8069;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+---------
+
+B) Unfortunately I do not think this is possible without a domain name, which is entered in WEBSITE NAME in install script
+
+certbot (LetsEncrypt!) will certify you and send you emails for recertification so you can retain https-ness
+
+BUT once you have a domain:
+$ sudo nano /etc/nginx/sites-available/odoo
+server_name www.yourdomain.com
+
+$ sudo nginx -t && nginx -s reload
+$ sudo apt-get update
+$ sudo apt-get install certbot
+$ sudo apt-get install python3-certbot-nginx
+$ sudo certbot --nginx -d $WEBSITE_NAME --noninteractive --agree-tos --email $ADMIN_EMAIL --redirect  sudo service nginx reload
+
+
+=======
+Integrate with PayPal (also needs a domain):
+
+https://www.odoo.com/documentation/user/14.0/general/payment_acquirers/paypal.html
+
+
+https://support.rocketspark.com/hc/en-us/articles/115010440408-How-do-I-set-up-Payment-Data-Transfer-PDT-
+https://www.paypal.com/businessmanage/account/website
+
